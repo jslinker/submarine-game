@@ -56,6 +56,12 @@ function render() {
     if(state.position-state.direction>=0&&state.position-state.direction<=4)nav('Step backward',()=>move(-state.direction));
     if(state.position+state.direction>=0&&state.position+state.direction<=4)nav('Forward ↑',()=>move(state.direction));
     if(state.position===4&&state.direction===1)spot('Sealed bulkhead',840,320,240,300,()=>say('The forward bulkhead is sealed. The control room is beside you.'));
+  } else if(s==='captainExit'||s==='messExit') {
+    const captain=s==='captainExit';
+    title=captain?'Captain’s quarters · Exit':'Mess hall · Exit';
+    path=captain?'captains/captain_outro.jpg':'messhall/messhall_outro.jpg';
+    spot('Leave through the door',captain?725:1020,captain?205:390,captain?470:195,captain?600:420,()=>go('hall'));
+    nav('↶ Turn around',()=>go(captain?'captain':'mess'));
   } else if(s==='captainDoor') {
     title='Captain’s quarters · Door';path='hall_door_01.jpg';
     spot(state.captainUnlocked?'Enter captain’s quarters':'Knock on the door',790,300,350,440,state.captainUnlocked?enterCaptain:knock);
@@ -66,13 +72,15 @@ function render() {
     if(has('gun')&&has('bullet')){$('patch').src=`captains/captain_${stem}_no_bullet.jpg`;$('patch').hidden=false;}
     if(!close)spot('Examine the captain',700,460,600,400,()=>go('captainBody'));
     else {if(!has('gun'))spot('Take pistol',500,295,430,180,()=>pickup('gun'));if(!has('bullet'))spot('Take cartridge',1030,480,140,140,()=>pickup('bullet'));}
-    nav(close?'Step back':'Main passage',()=>go(close?'captain':'hall'));
+    if(close)nav('Step back',()=>go('captain'));
+    nav('↶ Turn around',()=>go('captainExit'));
   } else if(['mess','messBody','messBook'].includes(s)) {
     title='Mess hall';path=s==='mess'?`messhall/messhall_intro${has('book')?'_no_book':''}.jpg`:s==='messBody'?`messhall/messhall_full_body${has('book')?'_no_book':''}.jpg`:`messhall/messhall_${has('book')?'no_book':'book'}.jpg`;
     if(s==='mess')spot('Approach the crew member',200,380,400,440,()=>go('messBody'));
     if(s==='messBody')spot(has('book')?'Examine empty hand':'Examine the book',840,430,400,400,()=>go('messBook'));
     if(s==='messBook'&&!has('book'))spot('Take notebook',650,420,620,420,()=>pickup('book'));
-    nav(s==='mess'?'Main passage':'Step back',()=>go(s==='mess'?'hall':s==='messBody'?'mess':'messBody'));
+    if(s!=='mess')nav('Step back',()=>go(s==='messBody'?'mess':'messBody'));
+    nav('↶ Turn around',()=>go('messExit'));
   } else if(s==='control'||s==='panel') {
     title='Control room';path=`control/control_${s==='control'?'intro':'panel'}.jpg`;
     spot(s==='control'?'Inspect the control panel':state.messUnlocked?'Mess hall unlocked':'Press unlock button',s==='control'?650:680,s==='control'?540:350,600,350,()=>s==='control'?go('panel'):panel());

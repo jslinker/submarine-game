@@ -7,7 +7,7 @@ export const initialState = () => ({
 export function sanitizeState(raw) {
   const state = initialState();
   if (!raw || typeof raw !== 'object') return state;
-  const scenes = ['hall', 'captainDoor', 'captain', 'captainBody', 'mess', 'messBody', 'messBook', 'control', 'panel', 'vent', 'basement'];
+  const scenes = ['hall', 'captainDoor', 'captain', 'captainBody', 'captainExit', 'mess', 'messBody', 'messBook', 'messExit', 'control', 'panel', 'vent', 'basement'];
   state.scene = scenes.includes(raw.scene) ? raw.scene : 'hall';
   state.position = Number.isInteger(raw.position) ? Math.max(0, Math.min(4, raw.position)) : 0;
   state.direction = raw.direction === -1 ? -1 : 1;
@@ -25,8 +25,8 @@ export function sanitizeState(raw) {
   return state;
 }
 export function canEnter(state, scene) {
-  if (['mess', 'messBody', 'messBook'].includes(scene)) return state.messUnlocked;
-  if (['captain', 'captainBody'].includes(scene)) return state.captainUnlocked;
+  if (['mess', 'messBody', 'messBook', 'messExit'].includes(scene)) return state.messUnlocked;
+  if (['captain', 'captainBody', 'captainExit'].includes(scene)) return state.captainUnlocked;
   return true;
 }
 export function collect(state, item) {
