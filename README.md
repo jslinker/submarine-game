@@ -1,7 +1,7 @@
 # submarine-game
 Point and click submarine exploration game.
 
-A playable static prototype using the original blockout images. Explore the captain’s quarters, mess hall, and control room; collect evidence, inspect the logbook, and restore emergency power.
+A playable static prototype using the original blockout images. Explore the captain’s quarters, mess hall, and control room; unlock the mess hall, find the notebook key, and collect a pistol and cartridge.
 
 ## Play
 
@@ -30,6 +30,8 @@ GitHub Pages is configured to use **GitHub Actions**. `.github/workflows/pages.y
 
 ## Prototype scope
 
-The current puzzle is provisional: take the mess hall logbook, inspect it for a key, and use the emergency control in the control room. The pistol and cartridge are optional evidence. The vent and basement are inspectable dead ends. Restored power completes the prototype; exploration remains available. There is no combat or audio yet.
+Start in the hall and turn around to knock on the door behind you. A voice says he is locked inside and needs the key. Press the control-room button to unlock the mess hall. Take the notebook there, inspect it for the key, then return to unlock the captain’s quarters. Collect the gun and bullet; both remain separate inventory items.
+
+The gun and bullet cannot be loaded or used yet. The vent and basement remain inspectable dead ends. There is no audio yet. This gameplay revision uses a new save slot (`submarine-game-v2`) so old puzzle progress cannot bypass the new locks.
 
 Original JPGs are retained in their source folders. When both captain items are taken, the game combines the left and right portions of the supplied removal variants at runtime. No original art is modified.
