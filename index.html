@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#080d10">
+  <meta name="description" content="Explore a silent submarine in a short point-and-click mystery prototype.">
+  <title>Submarine — Silent Running</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="style.css">
+  <script type="module" src="game.js"></script>
+</head>
+<body>
+  <main id="viewport" aria-label="Submarine exploration game">
+    <div id="stage">
+      <img id="scene" alt="" draggable="false">
+      <img id="patch" alt="" draggable="false" hidden>
+      <div class="shade"></div>
+      <header><div class="brand">SUBMARINE <span> / SILENT RUNNING</span></div><div class="tools"><button id="hints" aria-pressed="false">Hotspots · H</button><button id="map">Deck plan · M</button><button id="fullscreen">Fullscreen</button><button id="restart">Restart</button></div></header>
+      <section class="location"><p>EXPLORATION PROTOTYPE · 01</p><h1 id="location"></h1><p id="objective"></p></section>
+      <div id="hotspots" aria-label="Explore the scene"></div>
+      <div id="navigation" aria-label="Movement"></div>
+      <footer><div class="inventory-label">PERSONAL EFFECTS <span>Click an item to inspect</span></div><div id="inventory"></div><p id="message" role="status" aria-live="polite"></p></footer>
+      <dialog id="modal"><div id="modal-content"></div><button id="close-modal">Return to exploration · Esc</button></dialog>
+    </div>
+  </main>
+</body>
+</html>

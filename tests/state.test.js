@@ -1,0 +1,6 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {initialState,sanitizeState,collect,activatePanel} from '../state.js';
+test('complete puzzle requires the book and its hidden key',()=>{const s=initialState();assert.equal(activatePanel(s),false);assert.equal(collect(s,'key'),false);assert.equal(collect(s,'book'),true);assert.equal(activatePanel(s),false);assert.equal(collect(s,'key'),true);assert.equal(activatePanel(s),true);assert.equal(s.powered,true);});
+test('collectibles are unique and optional evidence does not unlock power',()=>{const s=initialState();collect(s,'gun');collect(s,'bullet');assert.equal(collect(s,'gun'),false);assert.equal(collect(s,'unknown'),false);assert.equal(activatePanel(s),false);assert.deepEqual(s.items,['gun','bullet']);});
+test('save restoration validates scene, position, inventory and completion',()=>{assert.deepEqual(sanitizeState(null),initialState());const s=sanitizeState({scene:'bad',position:500,direction:0,items:['key','key','invalid'],powered:true});assert.equal(s.scene,'hall');assert.equal(s.position,4);assert.equal(s.direction,1);assert.deepEqual(s.items,['key']);assert.equal(s.powered,true);assert.equal(sanitizeState({powered:true}).powered,false);});
