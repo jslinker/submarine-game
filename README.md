@@ -7,7 +7,7 @@ A playable static prototype using the original blockout images. Explore the capt
 
 https://jslinker.github.io/submarine-game/
 
-Click scene hotspots and movement buttons. **H** reveals hotspots, **M** opens the map, **↑** advances along the corridor, and **↓** turns around. Inventory items can be inspected. Progress saves in this browser; Restart clears it after confirmation.
+Click scene hotspots and movement buttons. **H** reveals hotspots, **M** opens the map, **↑** advances along the corridor, and **↓** turns around. **R** looks up and **F** looks down; **Esc** returns to looking ahead from an inspection view. The hallway also has a Step backward control. Look down at the basement hatch and up beneath the vent; other positions explain when there is nothing to inspect. Inventory items can be inspected. Progress saves in this browser; Restart clears it after confirmation.
 
 The game uses a fixed **1920×1080 logical viewport**, uniformly scaled to fit the available browser window with letterboxing. Scene images and interaction coordinates remain in that fixed coordinate system. It never stretches or crops to another aspect ratio.
 
