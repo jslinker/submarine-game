@@ -25,7 +25,10 @@ Drag with a mouse or one finger to look. Use +/− to zoom. Click a destination 
 the compass to move. The top of the compass is ahead, the bottom behind; destination
 labels stay upright as routes and compass bearings rotate with your view.
 W/A/S/D move toward a connected position in front/left/behind/right;
-arrow keys look around; number keys select compass routes and stay stable while panning.
+arrow keys snap to the next 90° angle in the pressed direction, once per press.
+Turns animate smoothly into position; reduced-motion preferences skip the animation.
+Left/right turn to the next compass heading; up/down tilt to level or straight up/down.
+Number keys select compass routes and stay stable while panning.
 Click the compass center to face north. M toggles the deck map. The interface fits the
 browser window, including phones.
 

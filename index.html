@@ -28,7 +28,7 @@
 </head>
 <body>
   <main id="explorer" aria-label="Submarine panorama explorer" aria-busy="true">
-    <canvas id="panorama" tabindex="0" aria-label="Panorama. Drag to look around, use arrow keys to look, and W A S D or numbered compass directions to move."></canvas>
+    <canvas id="panorama" tabindex="0" aria-label="Panorama. Drag to look around, use arrow keys to snap to the next 90-degree angle, and W A S D or numbered compass directions to move."></canvas>
     <div id="loading-line" aria-hidden="true"></div>
     <header class="topbar">
       <div class="identity">
@@ -64,7 +64,7 @@
         </button>
         <div id="compass-paths"></div>
       </nav>
-      <div class="position-info"><span class="live-dot"></span><span id="position-number">POSITION — / 09</span><span class="keyboard-hint">W A S D to move <i>·</i> ↑ ↓ ← → to look</span></div>
+      <div class="position-info"><span class="live-dot"></span><span id="position-number">POSITION — / 09</span><span class="keyboard-hint">W A S D to move <i>·</i> ↑ ↓ ← → to snap 90°</span></div>
     </footer>
     <section id="error" role="alert" hidden><div><h2 id="error-title">Couldn't open this view</h2><p id="error-message"></p></div><button id="retry">Try again</button></section>
     <p id="status" class="sr-only" role="status" aria-live="polite"></p>

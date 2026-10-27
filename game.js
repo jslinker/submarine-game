@@ -1,12 +1,13 @@
-import {PanoramaViewer} from './panorama.js';
+import {PanoramaViewer, transitionFrame} from './panorama.js';
 import {chooseStep, clamp, compassOptions, compassPoint, createWorld, normalizeYaw, parseMermaid} from './navigation.js';
 
 const $ = id => document.getElementById(id);
 const canvas = $('panorama');
 const view = {yaw: 0, pitch: 0, fov: 80};
+const TURN_DURATION = 320;
 const manifestURL = new URL('./panoramas/manifest.json', import.meta.url);
 const visited = new Set();
-let viewer, world, locationId, loading = false, retryAction, frame, pointer;
+let viewer, world, locationId, loading = false, retryAction, frame, pointer, turn;
 let movementButtons = [];
 let mapPoints;
 let manifestVersion = '';
@@ -39,6 +40,7 @@ function requestDraw() {
 }
 function draw(now) {
   frame = null;
+  updateTurn(now);
   if (viewer?.draw(view, now)) requestDraw();
   const headings = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
   $('heading').textContent = `${headings[Math.round(view.yaw / 45) % 8]} · ${String(Math.round(view.yaw) % 360).padStart(3, '0')}°`;
@@ -156,14 +158,47 @@ async function move(destination) {
   }
 }
 function look(yaw, pitch, fov = view.fov) {
+  turn = null;
   view.yaw = normalizeYaw(yaw);
-  view.pitch = clamp(pitch, -85, 85);
+  view.pitch = clamp(pitch, -90, 90);
   view.fov = clamp(fov, 45, 100);
+  requestDraw();
+}
+function nextQuarterTurn(angle, direction) {
+  return (direction > 0 ? Math.floor(angle / 90) + 1 : Math.ceil(angle / 90) - 1) * 90;
+}
+function updateTurn(now) {
+  if (!turn) return;
+  const {progress, active} = transitionFrame(now - turn.started, viewer?.motionPreference.matches ? 0 : TURN_DURATION);
+  turn.currentYaw = turn.fromYaw + (turn.yaw - turn.fromYaw) * progress;
+  view.yaw = normalizeYaw(turn.currentYaw);
+  view.pitch = turn.fromPitch + (turn.pitch - turn.fromPitch) * progress;
+  if (active) requestDraw();
+  else turn = null;
+}
+function snapTurn(yawDirection, pitchDirection) {
+  const now = performance.now();
+  updateTurn(now);
+  // Keep yaw unwrapped during a turn so crossing north follows the pressed
+  // direction. Repeated presses advance the target; reversing turns back now.
+  const fromYaw = turn?.currentYaw ?? view.yaw;
+  const yawTarget = turn?.yaw ?? view.yaw;
+  const pitchTarget = turn?.pitch ?? view.pitch;
+  const yawBase = Math.sign(yawTarget - fromYaw) === yawDirection ? yawTarget : fromYaw;
+  const pitchBase = Math.sign(pitchTarget - view.pitch) === pitchDirection ? pitchTarget : view.pitch;
+  turn = {
+    fromYaw, fromPitch: view.pitch, currentYaw: fromYaw,
+    yaw: yawDirection ? nextQuarterTurn(yawBase, yawDirection) : yawTarget,
+    pitch: pitchDirection ? clamp(nextQuarterTurn(pitchBase, pitchDirection), -90, 90) : pitchTarget,
+    started: now,
+  };
   requestDraw();
 }
 canvas.addEventListener('pointerdown', event => {
   if (event.button !== 0 || pointer) return;
   event.preventDefault();
+  updateTurn(performance.now());
+  turn = null;
   canvas.focus({preventScroll: true});
   pointer = {id: event.pointerId, x: event.clientX, y: event.clientY};
   canvas.setPointerCapture(event.pointerId);
@@ -209,10 +244,11 @@ $('retry').onclick = () => retryAction?.();
 document.addEventListener('keydown', event => {
   if (event.ctrlKey || event.metaKey || event.altKey) return;
   const key = event.key.toLowerCase();
-  const turns = {arrowleft: [-5, 0], arrowright: [5, 0], arrowup: [0, 5], arrowdown: [0, -5]};
+  const turns = {arrowleft: [-1, 0], arrowright: [1, 0], arrowup: [0, 1], arrowdown: [0, -1]};
   if (turns[key]) {
     event.preventDefault();
-    look(view.yaw + turns[key][0], view.pitch + turns[key][1]);
+    if (event.repeat) return;
+    snapTurn(...turns[key]);
   } else if (key === 'm') $('map-toggle').click();
   else if (key === 'escape' && !$('map-panel').hidden) $('map-toggle').click();
   else if (world && locationId && !loading) {
