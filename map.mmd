@@ -1,0 +1,30 @@
+%% This file is the navigator's live connection map.
+%% IDs must match values in scripts/panorama-cameras.json.
+%% <--> and --- are two-way; --> is one-way. Labels can change without renaming images.
+%% start: stand_00
+%% yaw: 0
+flowchart BT
+    subgraph main_passage["Main passage"]
+        stand_00["Aft passage"]
+        stand_01["Main passage"]
+        stand_02["Forward junction"]
+    end
+    subgraph port_side["Port side"]
+        stand_03["Port junction"]
+        stand_06["Port compartment"]
+    end
+    subgraph starboard_side["Starboard side"]
+        stand_04["Starboard junction"]
+        stand_08["Starboard compartment"]
+    end
+    stand_05["Forward compartment"]
+    stand_07["Aft compartment"]
+
+    stand_07 <--> stand_00
+    stand_00 <--> stand_01
+    stand_01 <--> stand_02
+    stand_02 <--> stand_03
+    stand_03 <--> stand_06
+    stand_02 <--> stand_04
+    stand_04 <--> stand_08
+    stand_02 <--> stand_05

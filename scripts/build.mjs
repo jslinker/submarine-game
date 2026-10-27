@@ -1,6 +1,14 @@
-import {rm,mkdir,cp,writeFile} from 'node:fs/promises';
+import {rm,mkdir,cp,writeFile,readFile} from 'node:fs/promises';
+import {createWorld,parseMermaid} from '../navigation.js';
+const manifest = JSON.parse(await readFile('panoramas/manifest.json','utf8'));
+const navigation = parseMermaid(await readFile('map.mmd','utf8'));
+const world = createWorld(manifest,navigation);
+for (const location of Object.values(world.locations)) await readFile(`panoramas/${location.file}`);
 await rm('dist',{recursive:true,force:true});
 await mkdir('dist',{recursive:true});
-for(const file of ['index.html','style.css','game.js','state.js','hall_door_01.jpg','hall_main','captains','messhall','control','inventory']) await cp(file,`dist/${file}`,{recursive:true,filter:source=>!source.endsWith('.DS_Store')});
+for(const file of ['index.html','style.css','game.js','navigation.js','panorama.js','map.mmd']) await cp(file,`dist/${file}`);
+await mkdir('dist/panoramas',{recursive:true});
+await cp('panoramas/manifest.json','dist/panoramas/manifest.json');
+for(const location of Object.values(world.locations)) await cp(`panoramas/${location.file}`,`dist/panoramas/${location.file}`);
 await writeFile('dist/.nojekyll','');
-console.log('Static game built in dist/');
+console.log(`Built panorama explorer with ${Object.keys(world.locations).length} camera positions in dist/`);

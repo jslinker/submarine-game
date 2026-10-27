@@ -1,0 +1,7 @@
+{
+  "blend_file": "~/Desktop/Submarine Layout Example.blend",
+  "camera_map": "scripts/panorama-cameras.json",
+  "width": 4096,
+  "samples": 64,
+  "device": "GPU"
+}

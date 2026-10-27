@@ -2,27 +2,57 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#080d10">
-  <meta name="description" content="Explore a silent submarine in a short point-and-click mystery prototype.">
-  <title>Submarine — Silent Running</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#141b20">
+  <meta name="description" content="Step inside the submarine. Drag to look around and follow the arrows to explore the deck.">
+  <title>Submarine — Deck Explorer</title>
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="style.css">
   <script type="module" src="game.js"></script>
 </head>
 <body>
-  <main id="viewport" aria-label="Submarine exploration game">
-    <div id="stage">
-      <img id="scene" alt="" draggable="false">
-      <img id="patch" alt="" draggable="false" hidden>
-      <div class="shade"></div>
-      <header><div class="brand">SUBMARINE <span> / SILENT RUNNING</span></div><div class="tools"><button id="hints" aria-pressed="false">Hotspots · H</button><button id="map">Deck plan · M</button><button id="fullscreen">Fullscreen</button><button id="restart">Restart</button></div></header>
-      <section class="location"><p>EXPLORATION PROTOTYPE · 01</p><h1 id="location"></h1><p id="objective"></p></section>
-      <div id="hotspots" aria-label="Explore the scene"></div>
-      <div id="navigation" aria-label="Movement"></div>
-      <footer><div class="inventory-label">PERSONAL EFFECTS <span>Click an item to inspect</span></div><div id="inventory"></div><p id="message" role="status" aria-live="polite"></p></footer>
-      <dialog id="modal"><div id="modal-content"></div><button id="close-modal">Return to exploration · Esc</button></dialog>
-    </div>
+  <main id="explorer" aria-label="Submarine panorama explorer" aria-busy="true">
+    <canvas id="panorama" tabindex="0" aria-label="Panorama. Drag to look around, use arrow keys to look, and W A S D or numbered compass directions to move."></canvas>
+    <div id="loading-line" aria-hidden="true"></div>
+    <header class="topbar">
+      <div class="identity">
+        <svg class="brand-icon" viewBox="0 0 32 32" fill="none" aria-hidden="true"><rect x="3" y="8" width="26" height="18" rx="9"/><path d="M13 8V4h6v4M8 17h16M16 12v10"/><circle cx="16" cy="17" r="4"/></svg>
+        <div><p class="eyebrow">SUBMARINE <span>/ DECK EXPLORER</span></p><h1 id="location">Opening the passage…</h1></div>
+      </div>
+      <div class="tools">
+        <button id="map-toggle" class="icon-button" aria-label="Show deck map" aria-expanded="false" aria-controls="map-panel" title="Deck map · M"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 5l6-2 6 2 6-2v16l-6 2-6-2-6 2zM9 3v16M15 5v16"/></svg></button>
+        <button id="fullscreen" class="icon-button" aria-label="Enter fullscreen" title="Fullscreen"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></svg></button>
+      </div>
+    </header>
+    <aside id="map-panel" hidden aria-label="Deck map">
+      <div class="map-heading"><span>DECK PLAN</span><span id="explored">0 / 9 visited</span></div>
+      <svg id="deck-map" role="img" aria-label="Camera positions and connecting passages"></svg>
+      <div class="map-key"><span></span> Your position <small>North ↑</small></div>
+    </aside>
+    <div class="zoom-controls" aria-label="Zoom controls"><button id="zoom-in" aria-label="Zoom in" title="Zoom in">+</button><button id="zoom-out" aria-label="Zoom out" title="Zoom out">−</button></div>
+    <footer class="bottom-bar">
+      <p class="look-hint"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8 12V6a2 2 0 014 0v5-7a2 2 0 014 0v8-5a2 2 0 014 0v8c0 4-3 7-7 7h-1c-2 0-4-1-5-3l-4-6a2 2 0 013-2l2 2"/></svg><span>Drag to look around <i>·</i> Choose a direction on the compass</span></p>
+      <nav id="navigation" aria-label="Movement compass">
+        <svg id="compass-dial" class="compass-dial" viewBox="0 0 300 300" fill="none" aria-hidden="true">
+          <circle cx="150" cy="150" r="128"/><circle cx="150" cy="150" r="82"/>
+          <g id="compass-ticks"></g>
+        </svg>
+        <span class="compass-forward" aria-hidden="true"></span>
+        <span class="compass-cardinal compass-north" data-bearing="0" aria-hidden="true">N</span>
+        <span class="compass-cardinal" data-bearing="90" aria-hidden="true">E</span>
+        <span class="compass-cardinal" data-bearing="180" aria-hidden="true">S</span>
+        <span class="compass-cardinal" data-bearing="270" aria-hidden="true">W</span>
+        <button id="north" class="compass-center" title="Face north" aria-label="Face north">
+          <svg id="compass-needle" viewBox="0 0 28 28" aria-hidden="true"><path d="M14 3l6 20-6-4-6 4z"/></svg>
+          <span id="heading">N · 000°</span><span class="compass-reset">FACE NORTH</span>
+        </button>
+        <div id="compass-paths"></div>
+      </nav>
+      <div class="position-info"><span class="live-dot"></span><span id="position-number">POSITION — / 09</span><span class="keyboard-hint">W A S D to move <i>·</i> ↑ ↓ ← → to look</span></div>
+    </footer>
+    <section id="error" role="alert" hidden><div><h2 id="error-title">Couldn't open this view</h2><p id="error-message"></p></div><button id="retry">Try again</button></section>
+    <p id="status" class="sr-only" role="status" aria-live="polite"></p>
+    <noscript><p class="noscript">Enable JavaScript to explore the submarine.</p></noscript>
   </main>
 </body>
 </html>

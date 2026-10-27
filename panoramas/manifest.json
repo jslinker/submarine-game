@@ -1,0 +1,130 @@
+{
+  "schema_version": 1,
+  "projection": "equirectangular",
+  "width": 4096,
+  "height": 2048,
+  "state": "default",
+  "frame": 1,
+  "view_layer": "ViewLayer",
+  "samples": 256,
+  "axes": {
+    "east": "+X",
+    "north": "+Y",
+    "up": "+Z"
+  },
+  "camera_rotation_degrees": [
+    90,
+    0,
+    0
+  ],
+  "locations": {
+    "stand_00": {
+      "file": "stand_00.jpg",
+      "camera": "Camera",
+      "position": [
+        0.01710575819015503,
+        -4.196015357971191,
+        1.1453174352645874
+      ],
+      "width": 4096,
+      "height": 2048,
+      "samples": 256
+    },
+    "stand_01": {
+      "file": "stand_01.jpg",
+      "camera": "Camera.001",
+      "position": [
+        0.01710575819015503,
+        -0.05766916275024414,
+        1.1453174352645874
+      ],
+      "width": 4096,
+      "height": 2048,
+      "samples": 256
+    },
+    "stand_02": {
+      "file": "stand_02.jpg",
+      "camera": "Camera.002",
+      "position": [
+        0.01710575819015503,
+        6.407838344573975,
+        1.1453174352645874
+      ],
+      "width": 4096,
+      "height": 2048,
+      "samples": 256
+    },
+    "stand_03": {
+      "file": "stand_03.jpg",
+      "camera": "Camera.003",
+      "position": [
+        -2.753826141357422,
+        6.407838344573975,
+        1.1453174352645874
+      ],
+      "width": 4096,
+      "height": 2048,
+      "samples": 256
+    },
+    "stand_04": {
+      "file": "stand_04.jpg",
+      "camera": "Camera.004",
+      "position": [
+        3.2538185119628906,
+        6.407838344573975,
+        1.1453174352645874
+      ],
+      "width": 4096,
+      "height": 2048,
+      "samples": 256
+    },
+    "stand_05": {
+      "file": "stand_05.jpg",
+      "camera": "Camera.005",
+      "position": [
+        0.01710575819015503,
+        9.865582466125488,
+        1.1453174352645874
+      ],
+      "width": 4096,
+      "height": 2048,
+      "samples": 256
+    },
+    "stand_06": {
+      "file": "stand_06.jpg",
+      "camera": "Camera.006",
+      "position": [
+        -2.753826141357422,
+        0.2502117156982422,
+        1.1453174352645874
+      ],
+      "width": 4096,
+      "height": 2048,
+      "samples": 256
+    },
+    "stand_07": {
+      "file": "stand_07.jpg",
+      "camera": "Camera.007",
+      "position": [
+        -0.030260324478149414,
+        -7.470504283905029,
+        1.1453174352645874
+      ],
+      "width": 4096,
+      "height": 2048,
+      "samples": 256
+    },
+    "stand_08": {
+      "file": "stand_08.jpg",
+      "camera": "Camera.008",
+      "position": [
+        3.2538185119628906,
+        0.5534563064575195,
+        1.1453174352645874
+      ],
+      "width": 4096,
+      "height": 2048,
+      "samples": 256
+    }
+  }
+}

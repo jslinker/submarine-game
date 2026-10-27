@@ -1,104 +1,258 @@
-import {SAVE_KEY,initialState,sanitizeState,collect,activatePanel,canEnter,unlockCaptain,objective} from './state.js';
-const $=id=>document.getElementById(id);
-let state=initialState();
-try {state=sanitizeState(JSON.parse(localStorage.getItem(SAVE_KEY)));} catch {}
-const names={book:'Notebook',key:'Brass key',gun:'Pistol',bullet:'Cartridge'};
-const assets={book:'inventory/book_inventory.jpg',key:'inventory/key_inventory.jpg',gun:'inventory/gun_inventory.jpg',bullet:'inventory/bullet_inventory.jpg'};
-const has=item=>state.items.includes(item);
-const say=text=>{$('message').textContent=text;};
-const save=()=>{try{localStorage.setItem(SAVE_KEY,JSON.stringify(state));}catch{}};
-function button(label,action,parent) {const b=document.createElement('button');b.textContent=label;b.onclick=action;parent.append(b);return b;}
-function spot(label,x,y,w,h,action) {const b=button('',action,$('hotspots'));b.className='hotspot';b.setAttribute('aria-label',label);Object.assign(b.style,{left:x+'px',top:y+'px',width:w+'px',height:h+'px'});const span=document.createElement('span');span.textContent=label;b.append(span);}
-function go(scene) {if(!canEnter(state,scene)){say(scene.startsWith('mess')?'The mess hall is locked. Try the control room.':'The captain’s quarters are locked. You need the key.');return;}state.scene=scene;render();say('Click to investigate. Press H to reveal points of interest.');}
-function move(delta) {state.position=Math.max(0,Math.min(4,state.position+delta));go('hall');}
-function look(direction) {
-  if(['vent','basement'].includes(state.scene)){if((state.scene==='vent'&&direction==='down')||(state.scene==='basement'&&direction==='up'))go('hall');return;}
-  if(state.scene!=='hall')return;
-  if(direction==='up'&&state.position===2)go('vent');
-  else if(direction==='down'&&state.position===1)go('basement');
-  else say(direction==='up'?'There is nothing overhead to inspect here. Look for the vent along the passage.':'There is nothing below to inspect here. Look for the basement hatch along the passage.');
-}
-function turnAround() {if(!['hall','vent','basement'].includes(state.scene))return;state.direction*=-1;go('hall');}
+import {PanoramaViewer} from './panorama.js';
+import {chooseStep, clamp, compassOptions, compassPoint, createWorld, normalizeYaw, parseMermaid} from './navigation.js';
 
-function showModal(title,text,src,action) {const content=$('modal-content');content.replaceChildren();const h=document.createElement('h2');h.textContent=title;content.append(h);if(src){const img=document.createElement('img');img.src=src;img.alt=title;if(src.endsWith('map.jpg'))img.className='deck-map';content.append(img);}if(text){const p=document.createElement('p');p.textContent=text;content.append(p);}if(action)button(action.label,action.run,content);if(!$('modal').open)$('modal').showModal();}
-function pickup(item) {if(collect(state,item)){render();say(`${names[item]} collected. Inspect it in your personal effects.`);}}
-function inspect(item) {
-  if(item==='book') showModal('The notebook',has('key')?'The note reads: “Captain’s quarters.” The key has been removed from the cover.':'The note reads: “Captain’s quarters.” A small key is tucked inside the cover.',has('key')?assets.book:'inventory/key_book_inventory.jpg',has('key')?null:{label:'Take the key',run:()=>{pickup('key');$('modal').close();}});
-  else if(item==='gun'||item==='bullet') showModal(names[item],item==='gun'?'A pistol from the captain’s quarters. You cannot use it yet.':'A single cartridge from the captain’s quarters. You cannot use it yet.',assets[item]);
-  else showModal('Captain’s key','The key from the notebook opens the captain’s quarters.',assets.key);
+const $ = id => document.getElementById(id);
+const canvas = $('panorama');
+const view = {yaw: 0, pitch: 0, fov: 80};
+const manifestURL = new URL('./panoramas/manifest.json', import.meta.url);
+const visited = new Set();
+let viewer, world, locationId, loading = false, retryAction, frame, pointer;
+let movementButtons = [];
+let mapPoints;
+let manifestVersion = '';
+
+function imageURL(location) {
+  const url = new URL(location.file, manifestURL);
+  if (manifestVersion) url.searchParams.set('v', manifestVersion);
+  return url.href;
 }
-function knock() {
-  state.knocked=true;render();
-  showModal('A voice behind the door','“I’m locked inside. You’ll need the key to get me out.”');
+
+function preloadNeighbors() {
+  const routes = compassOptions(world, locationId, view.yaw)
+    .sort((a, b) => Math.abs(a.difference) - Math.abs(b.difference));
+  viewer.preload(routes.map(route => imageURL(world.locations[route.id])));
 }
-function enterCaptain() {
-  if(!unlockCaptain(state)){say('The door is locked. Find the key.');return;}
-  go('captain');say('The notebook key turns in the lock. You enter the captain’s quarters.');
+
+function showError(error, action = () => location.reload()) {
+  $('error-title').textContent = viewer?.current ? "Couldn't move to that position" : "Couldn't open the submarine";
+  $('error-message').textContent = error.message;
+  $('error').hidden = false;
+  retryAction = action;
 }
-function panel() {
-  activatePanel(state);render();say('You press the button. A lock releases down the hall. The mess hall is now open.');
+function setLoading(value) {
+  loading = value;
+  $('explorer').setAttribute('aria-busy', String(value));
+  for (const button of movementButtons) button.disabled = value;
 }
-function render() {
-  $('hotspots').replaceChildren();$('navigation').replaceChildren();$('inventory').replaceChildren();$('patch').hidden=true;
-  let path,title; const s=state.scene;
-  const nav=(label,fn)=>button(label,fn,$('navigation'));
-  if(s==='hall') {
-    title='Main passage';path=state.direction===1?`hall_main/hall_up_0${state.position+1}.jpg`:`hall_main/hall_down_0${Math.max(1,4-state.position)}.jpg`;
-    if(state.direction===1&&state.position<4)spot('Move forward',810,310,300,430,()=>move(1));
-    if(state.direction===-1&&state.position>0)spot('Move forward',810,310,300,430,()=>move(-1));
-    if(state.position===0&&state.direction===-1){path='hall_main/hall_door_end.jpg';spot('Approach the door',760,280,400,500,()=>go('captainDoor'));nav('Door behind you',()=>go('captainDoor'));}
-    nav('Look up · R',()=>look('up'));
-    nav('Look down · F',()=>look('down'));
-    if(state.position===1)spot('Look down · Basement hatch',730,745,460,120,()=>look('down'));
-    if(state.position===2)spot('Look up · Vent',730,110,460,180,()=>look('up'));
-    if(state.position===3||state.position===4){nav('Mess hall',()=>go('mess'));nav('Control room',()=>go('control'));}
-    nav('↶ Turn around',turnAround);
-    if(state.position-state.direction>=0&&state.position-state.direction<=4)nav('Step backward',()=>move(-state.direction));
-    if(state.position+state.direction>=0&&state.position+state.direction<=4)nav('Forward ↑',()=>move(state.direction));
-    if(state.position===4&&state.direction===1)spot('Sealed bulkhead',840,320,240,300,()=>say('The forward bulkhead is sealed. The control room is beside you.'));
-  } else if(s==='captainExit'||s==='messExit') {
-    const captain=s==='captainExit';
-    title=captain?'Captain’s quarters · Exit':'Mess hall · Exit';
-    path=captain?'captains/captain_outro.jpg':'messhall/messhall_outro.jpg';
-    spot('Leave through the door',captain?725:1020,captain?205:390,captain?470:195,captain?600:420,()=>go('hall'));
-    nav('↶ Turn around',()=>go(captain?'captain':'mess'));
-  } else if(s==='captainDoor') {
-    title='Captain’s quarters · Door';path='hall_door_01.jpg';
-    spot(state.captainUnlocked?'Enter captain’s quarters':'Knock on the door',790,300,350,440,state.captainUnlocked?enterCaptain:knock);
-    nav(state.captainUnlocked?'Open door':has('key')?'Use notebook key':'Try the door',enterCaptain);
-    nav('Main passage',()=>go('hall'));
-  } else if(s==='captain'||s==='captainBody') {
-    const close=s==='captainBody';title='Captain’s quarters';const stem=close?'body':'intro';path=`captains/captain_${stem}${has('gun')?'_no_gun':has('bullet')?'_no_bullet':''}.jpg`;
-    if(has('gun')&&has('bullet')){$('patch').src=`captains/captain_${stem}_no_bullet.jpg`;$('patch').hidden=false;}
-    if(!close)spot('Examine the captain',700,460,600,400,()=>go('captainBody'));
-    else {if(!has('gun'))spot('Take pistol',500,295,430,180,()=>pickup('gun'));if(!has('bullet'))spot('Take cartridge',1030,480,140,140,()=>pickup('bullet'));}
-    if(close)nav('Step back',()=>go('captain'));
-    nav('↶ Turn around',()=>go('captainExit'));
-  } else if(['mess','messBody','messBook'].includes(s)) {
-    title='Mess hall';path=s==='mess'?`messhall/messhall_intro${has('book')?'_no_book':''}.jpg`:s==='messBody'?`messhall/messhall_full_body${has('book')?'_no_book':''}.jpg`:`messhall/messhall_${has('book')?'no_book':'book'}.jpg`;
-    if(s==='mess')spot('Approach the crew member',200,380,400,440,()=>go('messBody'));
-    if(s==='messBody')spot(has('book')?'Examine empty hand':'Examine the book',840,430,400,400,()=>go('messBook'));
-    if(s==='messBook'&&!has('book'))spot('Take notebook',650,420,620,420,()=>pickup('book'));
-    if(s!=='mess')nav('Step back',()=>go(s==='messBody'?'mess':'messBody'));
-    nav('↶ Turn around',()=>go('messExit'));
-  } else if(s==='control'||s==='panel') {
-    title='Control room';path=`control/control_${s==='control'?'intro':'panel'}.jpg`;
-    spot(s==='control'?'Inspect the control panel':state.messUnlocked?'Mess hall unlocked':'Press unlock button',s==='control'?650:680,s==='control'?540:350,600,350,()=>s==='control'?go('panel'):panel());
-    nav(s==='control'?'Main passage':'Step back',()=>go(s==='control'?'hall':'control'));
-  } else {title=s==='vent'?'Overhead vent':'Basement hatch';path=`hall_main/${s==='vent'?'hall_vent':'hall_basement_door'}.jpg`;spot('Inspect',700,300,520,480,()=>say(s==='vent'?'The vent is too narrow to enter. Somewhere beyond it, metal creaks.':'The hatch is jammed shut. This area is outside the current prototype.'));nav('Look ahead',()=>go('hall'));nav('↶ Turn around',turnAround);}
-  $('scene').src=path;$('scene').alt=title;$('location').textContent=title;
-  $('objective').textContent='OBJECTIVE · '+objective(state);
-  for(const item of state.items){const b=button('',()=>inspect(item),$('inventory'));b.setAttribute('aria-label',`Inspect ${names[item]}`);const img=document.createElement('img');img.src=assets[item];img.alt='';b.append(img,document.createTextNode(names[item]));}
-  if(!state.items.length){const p=document.createElement('p');p.className='empty';p.textContent='Nothing collected yet';$('inventory').append(p);}
-  save();
+function requestDraw() {
+  if (!frame) frame = requestAnimationFrame(draw);
 }
-function resize(){const scale=Math.min(innerWidth/1920,innerHeight/1080);$('stage').style.transform=`translate(-50%, -50%) scale(${scale})`;}
-window.addEventListener('resize',resize);resize();render();
-$('close-modal').onclick=()=>$('modal').close();
-$('hints').onclick=()=>{const on=$('stage').classList.toggle('show-hotspots');$('hints').setAttribute('aria-pressed',String(on));};
-$('map').onclick=()=>showModal('Deck plan','Your route runs between the captain’s quarters and the mess hall / control room junction.','hall_main/map.jpg');
-$('fullscreen').onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await $('viewport').requestFullscreen();}catch{say('Fullscreen is unavailable in this browser. The viewport still scales to fit.');}};
-$('restart').onclick=()=>showModal('Begin again?','This clears your saved progress and collected items.',null,{label:'Restart exploration',run:()=>{state=initialState();state.started=true;$('modal').close();render();say('There is a door behind you. Turn around and knock.');}});
-document.addEventListener('keydown',e=>{if($('modal').open||e.ctrlKey||e.metaKey||e.altKey)return;if(e.key.toLowerCase()==='h')$('hints').click();if(e.key.toLowerCase()==='m')$('map').click();if(e.key==='ArrowUp'&&state.scene==='hall'){e.preventDefault();move(state.direction);}if(e.key==='ArrowDown'&&state.scene==='hall'){e.preventDefault();turnAround();}if(e.key.toLowerCase()==='r')look('up');if(e.key.toLowerCase()==='f')look('down');if(e.key==='Escape'&&['vent','basement'].includes(state.scene))go('hall');});
-if(!state.started){showModal('Silent running','You wake aboard a silent submarine. There is a door behind you. Turn around and knock, then find a way to open it. Click objects to investigate. Use H to reveal hotspots, M for the deck plan, the arrow keys to move or turn, and R / F to look up / down.',null,{label:'Begin exploration →',run:()=>{state.started=true;save();$('modal').close();}});}
-say(objective(state)+'.');
+function draw(now) {
+  frame = null;
+  if (viewer?.draw(view, now)) requestDraw();
+  const headings = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+  $('heading').textContent = `${headings[Math.round(view.yaw / 45) % 8]} · ${String(Math.round(view.yaw) % 360).padStart(3, '0')}°`;
+  $('compass-needle').style.setProperty('--heading', `${-view.yaw}deg`);
+  $('compass-dial').style.transform = `rotate(${-view.yaw}deg)`;
+  for (const cardinal of $('navigation').querySelectorAll('.compass-cardinal')) {
+    const point = compassPoint(Number(cardinal.dataset.bearing), view.yaw, 15);
+    cardinal.style.left = `${point.x}%`;
+    cardinal.style.top = `${point.y}%`;
+  }
+  $('zoom-in').disabled = view.fov <= 45;
+  $('zoom-out').disabled = view.fov >= 100;
+  if (!world || !locationId) return;
+  const options = compassOptions(world, locationId, view.yaw);
+  for (const button of movementButtons) {
+    const option = options.find(item => item.id === button.dataset.destination);
+    button.style.setProperty('--bearing', `${option.difference}deg`);
+    button.style.left = `${option.x}%`;
+    button.style.top = `${option.y}%`;
+    button.querySelector('.move-direction').textContent = option.direction;
+    button.classList.toggle('ahead', option.direction === 'Ahead');
+    button.setAttribute('aria-label', `${option.direction}: ${option.label}. Shortcut ${option.shortcut}`);
+  }
+  const point = mapPoints[locationId];
+  $('map-facing').setAttribute('transform', `translate(${point[0]} ${point[1]}) rotate(${view.yaw})`);
+}
+function buildMovement() {
+  const options = compassOptions(world, locationId, view.yaw);
+  movementButtons = options.map(option => {
+    const button = document.createElement('button');
+    button.className = 'move-button';
+    button.dataset.destination = option.id;
+    button.innerHTML = '<span class="move-arrow"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 13l6-6 6 6M6 19l6-6 6 6"/></svg></span><span class="move-text"><span class="move-direction"></span><span class="move-label"></span></span><span class="move-key" aria-hidden="true"></span>';
+    button.querySelector('.move-label').textContent = option.label;
+    button.querySelector('.move-key').textContent = option.shortcut;
+    button.title = `Move to ${option.label} · ${option.shortcut}`;
+    button.setAttribute('aria-keyshortcuts', String(option.shortcut));
+    button.addEventListener('click', () => move(option.id));
+    return button;
+  });
+  $('compass-paths').replaceChildren(...movementButtons);
+}
+const svgElement = (name, attributes) => {
+  const element = document.createElementNS('http://www.w3.org/2000/svg', name);
+  for (const [key, value] of Object.entries(attributes)) element.setAttribute(key, value);
+  return element;
+};
+function buildMap() {
+  const nodes = Object.values(world.locations);
+  const xs = nodes.map(node => node.position[0]);
+  const ys = nodes.map(node => node.position[1]);
+  const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
+  const scale = Math.min(170 / (maxX - minX || 1), 240 / (maxY - minY || 1));
+  mapPoints = Object.fromEntries(nodes.map(node => [node.id, [
+    105 + (node.position[0] - (minX + maxX) / 2) * scale,
+    142 + ((minY + maxY) / 2 - node.position[1]) * scale,
+  ]]));
+  const svg = $('deck-map');
+  svg.setAttribute('viewBox', '0 0 210 285');
+  for (const [a, b] of world.connections) svg.append(svgElement('line', {
+    x1: mapPoints[a][0], y1: mapPoints[a][1], x2: mapPoints[b][0], y2: mapPoints[b][1], class: 'map-line',
+  }));
+  svg.append(svgElement('path', {id: 'map-facing', class: 'map-facing', d: 'M0 0 L-13 -25 Q0 -31 13 -25 Z'}));
+  for (const node of nodes) {
+    const circle = svgElement('circle', {cx: mapPoints[node.id][0], cy: mapPoints[node.id][1], r: 4.5, class: 'map-node', 'data-location': node.id});
+    const title = svgElement('title', {});
+    title.textContent = node.label;
+    circle.append(title);
+    svg.append(circle);
+  }
+}
+
+function buildCompass() {
+  for (let angle = 0; angle < 360; angle += 10) {
+    $('compass-ticks').append(svgElement('line', {x1: 150, y1: 23, x2: 150,
+      y2: angle % 90 === 0 ? 37 : 30, transform: `rotate(${angle} 150 150)`}));
+  }
+}
+async function move(destination) {
+  if (loading || destination === locationId) return;
+  if (locationId && !world.locations[locationId].neighbors.includes(destination)) return;
+  setLoading(true);
+  $('error').hidden = true;
+  const hadNavigationFocus = $('navigation').contains(document.activeElement);
+  try {
+    const location = world.locations[destination];
+    const texture = await viewer.load(imageURL(location));
+    const arrival = viewer.show(texture, world.locations[locationId]?.position, location.position);
+    $('explorer').setAttribute('data-moving', 'true');
+    requestDraw();
+    // Keep movement locked until arrival so rapid clicks cannot skip views or
+    // start a second transition from a half-blended image.
+    await arrival;
+    locationId = destination;
+    visited.add(destination);
+    $('location').textContent = location.label;
+    const ids = Object.keys(world.locations);
+    $('position-number').textContent = `POSITION ${String(ids.indexOf(locationId) + 1).padStart(2, '0')} / ${String(ids.length).padStart(2, '0')}`;
+    $('explored').textContent = `${visited.size} / ${ids.length} visited`;
+    $('status').textContent = `${location.label}. ${location.neighbors.length} available paths.`;
+    for (const node of $('deck-map').querySelectorAll('.map-node')) {
+      node.classList.toggle('current', node.dataset.location === destination);
+      node.classList.toggle('visited', visited.has(node.dataset.location));
+    }
+    buildMovement();
+    document.title = `${location.label} — Submarine`;
+    requestDraw();
+    preloadNeighbors();
+    if (hadNavigationFocus) canvas.focus({preventScroll: true});
+  } catch (error) {
+    showError(error, () => move(destination));
+  } finally {
+    $('explorer').removeAttribute('data-moving');
+    setLoading(false);
+  }
+}
+function look(yaw, pitch, fov = view.fov) {
+  view.yaw = normalizeYaw(yaw);
+  view.pitch = clamp(pitch, -85, 85);
+  view.fov = clamp(fov, 45, 100);
+  requestDraw();
+}
+canvas.addEventListener('pointerdown', event => {
+  if (event.button !== 0 || pointer) return;
+  event.preventDefault();
+  canvas.focus({preventScroll: true});
+  pointer = {id: event.pointerId, x: event.clientX, y: event.clientY};
+  canvas.setPointerCapture(event.pointerId);
+  canvas.classList.add('dragging');
+});
+canvas.addEventListener('pointermove', event => {
+  if (pointer?.id !== event.pointerId) return;
+  const sensitivity = view.fov / canvas.clientWidth * 1.3;
+  look(view.yaw - (event.clientX - pointer.x) * sensitivity, view.pitch + (event.clientY - pointer.y) * sensitivity);
+  pointer.x = event.clientX;
+  pointer.y = event.clientY;
+});
+function stopDragging() { pointer = null; canvas.classList.remove('dragging'); }
+canvas.addEventListener('pointerup', stopDragging);
+canvas.addEventListener('pointercancel', stopDragging);
+canvas.addEventListener('lostpointercapture', stopDragging);
+window.addEventListener('blur', stopDragging);
+canvas.addEventListener('webglcontextlost', event => {
+  event.preventDefault();
+  showError(new Error('The graphics connection was interrupted. Reload to continue.'));
+});
+canvas.addEventListener('webglcontextrestored', () => location.reload());
+window.addEventListener('resize', () => { viewer?.resize(); requestDraw(); });
+$('north').onclick = () => look(0, 0);
+$('zoom-in').onclick = () => look(view.yaw, view.pitch, view.fov - 10);
+$('zoom-out').onclick = () => look(view.yaw, view.pitch, view.fov + 10);
+$('map-toggle').onclick = () => {
+  const open = $('map-panel').hidden;
+  $('map-panel').hidden = !open;
+  $('map-toggle').setAttribute('aria-expanded', String(open));
+  $('map-toggle').setAttribute('aria-label', open ? 'Hide deck map' : 'Show deck map');
+};
+$('fullscreen').onclick = async () => {
+  try {
+    if (document.fullscreenElement) await document.exitFullscreen();
+    else await $('explorer').requestFullscreen();
+  } catch { $('status').textContent = 'Fullscreen is unavailable in this browser.'; }
+};
+document.addEventListener('fullscreenchange', () => {
+  $('fullscreen').setAttribute('aria-label', document.fullscreenElement ? 'Exit fullscreen' : 'Enter fullscreen');
+});
+$('retry').onclick = () => retryAction?.();
+document.addEventListener('keydown', event => {
+  if (event.ctrlKey || event.metaKey || event.altKey) return;
+  const key = event.key.toLowerCase();
+  const turns = {arrowleft: [-5, 0], arrowright: [5, 0], arrowup: [0, 5], arrowdown: [0, -5]};
+  if (turns[key]) {
+    event.preventDefault();
+    look(view.yaw + turns[key][0], view.pitch + turns[key][1]);
+  } else if (key === 'm') $('map-toggle').click();
+  else if (key === 'escape' && !$('map-panel').hidden) $('map-toggle').click();
+  else if (world && locationId && !loading) {
+    if (/^[1-9]$/.test(key)) movementButtons[Number(key) - 1]?.click();
+    const headings = {w: 0, d: 90, s: 180, a: -90};
+    if (Object.hasOwn(headings, key)) {
+      const destination = chooseStep(world, locationId, view.yaw, headings[key]);
+      if (destination) move(destination);
+      else $('status').textContent = 'There is no connected path in that direction.';
+    }
+  }
+});
+async function readManifest() {
+  const response = await fetch(manifestURL, {cache: 'no-cache'});
+  if (!response.ok) throw new Error(`Couldn't load ${manifestURL.pathname} (${response.status}).`);
+  // Rerendered files keep their names. Version image URLs with the manifest so
+  // preloading cannot bring back pictures from an earlier render pass.
+  manifestVersion = response.headers.get('etag') || response.headers.get('last-modified') || String(Date.now());
+  return response.json();
+}
+async function readMap() {
+  const response = await fetch(new URL('./map.mmd', import.meta.url));
+  if (!response.ok) throw new Error(`Could not load map.mmd (${response.status}).`);
+  return parseMermaid(await response.text());
+}
+async function boot() {
+  try {
+    viewer = new PanoramaViewer(canvas);
+    const [manifest, navigation] = await Promise.all([
+      readManifest(), readMap(),
+    ]);
+    world = createWorld(manifest, navigation);
+    view.yaw = world.initialYaw;
+    buildCompass();
+    buildMap();
+    loading = false;
+    await move(world.start);
+  } catch (error) {
+    setLoading(false);
+    showError(error);
+  }
+}
+boot();
