@@ -85,3 +85,10 @@ remain in the checkout for reference and are excluded from the new build.
 
 GitHub Pages continues to use `.github/workflows/pages.yml` on pushes to `main`.
 All asset paths remain relative for the `/submarine-game/` project path. Pushing `main` runs validation and publishes the current prototype.
+
+## Social sharing
+
+`assets/social-card.png` is the 1200×630 Open Graph/Twitter sharing image. `index.html`
+provides its absolute GitHub Pages URL so social previews work under the project
+path. The build includes it in `dist/assets/`. The built-in imagegen prompt is
+saved in [docs/social-card-prompt.md](docs/social-card-prompt.md).

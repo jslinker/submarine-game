@@ -7,6 +7,7 @@ for (const location of Object.values(world.locations)) await readFile(`panoramas
 await rm('dist',{recursive:true,force:true});
 await mkdir('dist',{recursive:true});
 for(const file of ['index.html','style.css','game.js','navigation.js','panorama.js','map.mmd']) await cp(file,`dist/${file}`);
+await cp('assets','dist/assets',{recursive:true});
 await mkdir('dist/panoramas',{recursive:true});
 await cp('panoramas/manifest.json','dist/panoramas/manifest.json');
 for(const location of Object.values(world.locations)) await cp(`panoramas/${location.file}`,`dist/panoramas/${location.file}`);
